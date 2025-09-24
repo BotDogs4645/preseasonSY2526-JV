@@ -9,9 +9,11 @@ import static edu.wpi.first.units.Units.*;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
@@ -63,7 +65,22 @@ public class RobotContainer {
         joystick.b().whileTrue(drivetrain.applyRequest(() ->
             point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
         ));
-
+        joystick.x().onTrue(
+            Commands.runOnce(
+                () -> {
+                  Pose2d resetPose = new Pose2d(0, 0, new Rotation2d(0));
+                  drivetrain.resetPose(resetPose);  
+                  System.out.println("Resetting position");
+                }
+            )
+        );
+        joystick.leftBumper().whileTrue(new Spit(roller));
+        joystick.leftTrigger().onTrue(new InstantCommand(() -> arm.setPivotDutyCycle(0.1)));
+        joystick.leftTrigger().onFalse(new InstantCommand(() -> arm.setPivotDutyCycle(-0.15)));
+        joystick.rightBumper().onTrue(new InstantCommand(() -> arm.setDutyCycle(-0.3)));
+        joystick.rightTrigger().onTrue(new InstantCommand(() -> arm.setDutyCycle(0.3)));
+        joystick.rightBumper().onFalse(new InstantCommand(() -> arm.setDutyCycle(0)));
+        joystick.rightTrigger().onFalse(new InstantCommand(() -> arm.setDutyCycle(0)));
         // Run SysId routines when holding back/start and X/Y.
         // Note that each routine should be run exactly once in a single log.
         joystick.back().and(joystick.y()).whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
@@ -72,7 +89,7 @@ public class RobotContainer {
         joystick.start().and(joystick.x()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kReverse));
 
         // reset the field-centric heading on left bumper press
-        joystick.leftBumper().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
+        joystick.y().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }
